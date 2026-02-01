@@ -21,3 +21,25 @@
 | BootMedia | Системная память | microSD 32 GB | ОС, загрузка и базовые конфигурации |
 | DataVault | Хранилище данных | Portable SSD KODAK X200 1 TB | Основное файловое хранилище |
 | NetLink | Сеть | Ethernet ↔ Ethernet кабель | Подключение к модему / роутеру |
+
+
+## Настройка
+Подготовка Raspberry Pi для SelfNAS-Pi с нуля
+1. Очистка SD-карты
+SD Card Formatter - 5
+2. Настройка системы
+Через Raspberry Pi Imager 2.0.6
+Установлена Raspberry Pi OS 64-bit
+
+## Подключение
+1. В файле `.env` указаны для доступа
+2. В роутере закреплён **статический IP** для Raspberry Pi (DHCP/Резервирование адресов)
+3. Команда доступа ssh USER@IP. Пример: ssh user_snas@192.168.0.101
+
+## Настройка докер
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+sudo usermod -aG docker $USER
+newgrp docker
