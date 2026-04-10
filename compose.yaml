@@ -1,0 +1,104 @@
+# /mnt/nas/configs/photoprism/compose.yaml
+version: '3.8'
+
+services:
+  # =======================
+  # PhotoPrism (Основной сервис)
+  # =======================
+  photoprism:
+    image: photoprism/photoprism:latest
+    platform: linux/arm64
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    ports:
+      - "2342:2342"  # Веб-интерфейс: http://<IP_RPi>:2342
+    environment:
+      # --- Авторизация ---
+      PHOTOPRISM_ADMIN_PASSWORD: "291228Gh+"
+      PHOTOPRISM_PUBLIC: "false"
+      PHOTOPRISM_READONLY: "false"
+
+      # --- Пути внутри контейнера ---
+      PHOTOPRISM_STORAGE_PATH: "/photoprism/storage"
+      PHOTOPRISM_ORIGINALS_PATH: "/photoprism/originals"
+      PHOTOPRISM_IMPORT_PATH: "/photoprism/import"
+
+      # --- База данных (MariaDB) ---
+      PHOTOPRISM_DATABASE_DRIVER: "mysql"
+      PHOTOPRISM_DATABASE_SERVER: "mariadb:3306"
+      PHOTOPRISM_DATABASE_NAME: "photoprism"
+      PHOTOPRISM_DATABASE_USER: "photoprism"
+      PHOTOPRISM_DATABASE_PASSWORD: "Db291228Gh+"
+
+      # --- Оптимизация для 4 ГБ ОЗУ ---
+      PHOTOPRISM_WORKERS: "2"              # Кол-во потоков (не ставьте больше 2)
+      PHOTOPRISM_WORKER_TIMEOUT: "3m"      # Таймаут для тяжёлых задач
+      PHOTOPRISM_LIMIT_INDEXING: "true"    # Ограничить фоновую индексацию
+      PHOTOPRISM_AUTO_INDEX: "-1"       # ❗ Отключено: запускайте вручную или по расписанию
+      
+      # --- AI и Функции ---
+      PHOTOPRISM_FACES_ENABLED: "true"     # Распознавание лиц (требует RAM)
+      PHOTOPRISM_CLASSIFY_ENABLED: "true"  # Авто-тегирование (сцены, объекты)
+      PHOTOPRISM_TENSORFLOW_CPU: "true"    # Использовать CPU для AI
+      PHOTOPRISM_RAW_PRESETS: "false"      # Пропускать сложную обработку RAW
+      
+      # --- Система ---
+      TZ: "Europe/Moscow"                  # Ваш часовой пояс
+      PHOTOPRISM_SITE_URL: "http://192.168.0.101:2342"  # Замените на IP вашего Pi
+      PHOTOPRISM_SITE_CAPTION: "SelfNAS Photo"
+      PHOTOPRISM_SITE_DESCRIPTION: "Домашняя фотобиблиотека"
+      PHOTOPRISM_SITE_AUTHOR: "@user_snas"
+
+    volumes:
+      - /mnt/nas/data/photoprism/storage:/photoprism/storage
+      - /mnt/nas/media/photos:/photoprism/originals
+      - /mnt/nas/data/photoprism/import:/photoprism/import
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+    # Ограничение ресурсов для стабильности
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
+
+  # =======================
+  # MariaDB (База данных)
+  # =======================
+  mariadb:
+    image: arm64v8/mariadb:11
+    platform: linux/arm64
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    environment:
+      MARIADB_AUTO_UPGRADE: "1"
+      MARIADB_INITDB_SKIP_TZINFO: "1"
+      MARIADB_DATABASE: "photoprism"
+      MARIADB_USER: "photoprism"
+      MARIADB_PASSWORD: "Db291228Gh+"
+      MARIADB_ROOT_PASSWORD: "RootPass789!"
+
+    volumes:
+      - /mnt/nas/data/photoprism/mysql:/var/lib/mysql
+    restart: unless-stopped
+    # Оптимизация памяти для MariaDB
+    command: >
+      --innodb-buffer-pool-size=256M
+      --innodb-log-buffer-size=32M
+      --query-cache-size=32M
+      --tmp-table-size=64M
+      --max-heap-table-size=64M
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+# =======================
+# Сети и Хранилища
+# =======================
+networks:
+  default:
+    name: photoprism_net
+    driver: bridge
